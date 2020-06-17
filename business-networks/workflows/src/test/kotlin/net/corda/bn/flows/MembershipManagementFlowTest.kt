@@ -89,12 +89,13 @@ abstract class MembershipManagementFlowTest(
 
     protected fun getAllMembershipsFromVault(node: StartedMockNode, networkId: String): List<MembershipState> {
         val databaseService = node.services.cordaService(DatabaseService::class.java)
-        return databaseService.getAllMembershipsWithStatus(networkId, MembershipStatus.PENDING, MembershipStatus.ACTIVE, MembershipStatus.SUSPENDED)
-                .map {
-                    it.state.data
-                }
+        return databaseService.getAllMembershipsWithStatus(
+                networkId,
+                MembershipStatus.PENDING, MembershipStatus.ACTIVE, MembershipStatus.SUSPENDED
+        ).map {
+            it.state.data
+        }
     }
 }
 
-fun StartedMockNode.identity() = info.legalIdentities.single()
 fun StartedMockNode.identity() = info.legalIdentities.single()
