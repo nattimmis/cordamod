@@ -2,6 +2,7 @@ package net.corda.bn.flows
 
 import net.corda.bn.states.MembershipState
 import net.corda.bn.states.MembershipStatus
+import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.identity.CordaX500Name
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.utilities.getOrThrow
@@ -52,15 +53,48 @@ abstract class MembershipManagementFlowTest(
         return future.getOrThrow()
     }
 
+    protected fun runRequestMembershipFlow(initiator: StartedMockNode, authorisedNode: StartedMockNode, networkId: String): SignedTransaction {
+        val future = initiator.startFlow(RequestMembershipFlow(authorisedNode.identity(), networkId))
+        mockNetwork.runNetwork()
+        return future.getOrThrow()
+    }
+
+    protected fun runActivateMembershipFlow(initiator: StartedMockNode, membershipId: UniqueIdentifier): SignedTransaction {
+        val future = initiator.startFlow(ActivateMembershipFlow(membershipId))
+        mockNetwork.runNetwork()
+        return future.getOrThrow()
+    }
+
+    protected fun runRequestAndActivateMembershipFlows(initiator: StartedMockNode, authorisedNode: StartedMockNode, networkId: String): SignedTransaction {
+        val membership = runRequestMembershipFlow(initiator, authorisedNode, networkId).tx.outputStates.single() as MembershipState
+        return runActivateMembershipFlow(authorisedNode, membership.linearId)
+    }
+
+    protected fun runSuspendMembershipFlow(initiator: StartedMockNode, membershipId: UniqueIdentifier): SignedTransaction {
+        val future = initiator.startFlow(SuspendMembershipFlow(membershipId))
+        mockNetwork.runNetwork()
+        return future.getOrThrow()
+    }
+
+    protected fun runRequestAndSuspendMembershipFlow(initiator: StartedMockNode, authorisedNode: StartedMockNode, networkId: String): SignedTransaction {
+        val membership = runRequestMembershipFlow(initiator, authorisedNode, networkId).tx.outputStates.single() as MembershipState
+        return runSuspendMembershipFlow(authorisedNode, membership.linearId)
+    }
+
+    protected fun runRevokeMembershipFlow(initiator: StartedMockNode, membershipId: UniqueIdentifier): SignedTransaction {
+        val future = initiator.startFlow(RevokeMembershipFlow(membershipId))
+        mockNetwork.runNetwork()
+        return future.getOrThrow()
+    }
+
     protected fun getAllMembershipsFromVault(node: StartedMockNode, networkId: String): List<MembershipState> {
         val databaseService = node.services.cordaService(DatabaseService::class.java)
-        return databaseService.getAllMembershipsWithStatus(
-                networkId,
-                MembershipStatus.PENDING, MembershipStatus.ACTIVE, MembershipStatus.SUSPENDED
-        ).map {
-            it.state.data
-        }
+        return databaseService.getAllMembershipsWithStatus(networkId, MembershipStatus.PENDING, MembershipStatus.ACTIVE, MembershipStatus.SUSPENDED)
+                .map {
+                    it.state.data
+                }
     }
 }
 
+fun StartedMockNode.identity() = info.legalIdentities.single()
 fun StartedMockNode.identity() = info.legalIdentities.single()
